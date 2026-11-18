@@ -32,6 +32,9 @@ import makefun_bars
 
 SYMBOL = "CBBTC"
 
+# Strategy: hour-scale momentum on the 60-bar close-to-close return.
+# Flat and ret > +50 bps -> buy all cash; long and ret < -50 bps -> sell
+# everything; otherwise hold. Thresholds are symmetric and unchanged.
 # 60 one-minute bars = one hour of returns.
 LOOKBACK = 60
 # Entry/exit thresholds on the 60-bar return, in basis points.
@@ -62,6 +65,11 @@ def on_batch(state, batch):
     if bar is not None:
         _closes.append(int(bar["c"]))
     if state.warming_up:
+        return []
+    # Defensive guard: the 60-bar return needs at least LOOKBACK + 1 closes
+    # (61) to be defined, so skip trading until that history exists. This
+    # mirrors _return_bps()'s own check and can never fire later in a run.
+    if len(_closes) < LOOKBACK + 1:
         return []
     ret = _return_bps()
     if ret is None:
